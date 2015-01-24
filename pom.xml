@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>org.mikeno.tools</groupId>
+    <artifactId>build-tools-parent</artifactId>
+    <name>build-tools-parent</name>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        
+        <javaSourceVersion>1.8</javaSourceVersion>
+        <javaTargetVersion>1.8</javaTargetVersion>
+        <javaVersionRange>[1.8.0-25,)</javaVersionRange>
+        <mavenVersionRange>[3.2.5,)</mavenVersionRange>
+        <checkstyleVersion>6.2</checkstyleVersion>
+        <checkstyleRulesVersion>1.0-SNAPSHOT</checkstyleRulesVersion>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- Since commons logging is banned by enforcer we remove it by forcing it to be provided. -->
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>1.1.1</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.2</version>
+                    <configuration>
+                        <source>${javaSourceVersion}</source>
+                        <target>${javaTargetVersion}</target>
+                    </configuration>
+                </plugin>
+                
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>1.3.1</version>
+                    <executions>
+                        <execution>
+                            <id>enforce</id>
+                            <configuration>
+                                <rules>
+                                    <!--
+                                    This rule enforces certain Java JDK versions. -->
+                                    <requireJavaVersion>
+                                        <version>${javaVersionRange}</version>
+                                    </requireJavaVersion>
+                                
+                                    <!-- 
+                                    This rule enforces certain Maven versions. -->
+                                    <requireMavenVersion>
+                                        <version>${mavenVersionRange}</version>
+                                    </requireMavenVersion>
+                            
+                                    <!--
+                                    This rule checks the dependencies and fails if any snapshots are found during a release. -->
+                                    <requireReleaseDeps>
+                                        <message>Release builds cannot use snapshot dependencies.</message>
+                                        <onlyWhenRelease>true</onlyWhenRelease>
+                                    </requireReleaseDeps>
+
+                                    <!-- 
+                                    This rule requires that dependency version numbers converge. If a project has two dependencies, 
+                                    A and B, both depending on the same artifact, C, this rule will fail the build if A depends on a 
+                                    different version of C then the version of C depended on by B. -->
+                                    <DependencyConvergence/>
+                                
+                                    <!--
+                                    This rule checks the dependencies and fails if any of the matching excludes are found. -->
+                                    <bannedDependencies>
+                                        <excludes>
+                                        
+                                            <!-- Use SLF4J commons logging bridge instead. -->
+                                            <exclude>commons-logging</exclude>
+                                        </excludes>
+                                    </bannedDependencies>
+                                </rules>
+                            </configuration>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+
+        <!-- 
+        ======================================================================================================
+        RELEASE PROFILE
+        ====================================================================================================== -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.4</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.10.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- 
+        ======================================================================================================
+        CHECKSTYLE PROFILE
+        ====================================================================================================== -->
+        <profile>
+            <id>checkstyle</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <version>2.13</version>
+                        <executions>
+                            <execution>
+                                <id>run-checkstyle</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <logViolationsToConsole>true</logViolationsToConsole>
+                            <configLocation>mikeno-checkstyle-rules.xml</configLocation>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.puppycrawl.tools</groupId>
+                                <artifactId>checkstyle</artifactId>
+                                <version>${checkstyleVersion}</version>
+                                <exclusions>
+                                    <exclusion>
+                                        <groupId>com.sun</groupId>
+                                        <artifactId>tools</artifactId>
+                                    </exclusion>
+                                </exclusions>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.mikeno.tools</groupId>
+                                <artifactId>build-tools-checkstyle</artifactId>
+                                <version>${checkstyleRulesVersion}</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+        <!-- 
+        ======================================================================================================
+        FINDBUGS PROFILE
+        ====================================================================================================== -->
+        <profile>
+            <id>findbugs</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>findbugs-maven-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <configuration>
+                            <effort>Max</effort>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>analyze-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        
+    </profiles>
+    
+</project>
